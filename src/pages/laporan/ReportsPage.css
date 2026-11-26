@@ -1,0 +1,389 @@
+.reports {
+  display: grid;
+  gap: 13px;
+}
+
+.reports__page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reports__page-header h1 {
+  margin: 0 0 5px;
+  color: #1f3d12;
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 720;
+  letter-spacing: -0.6px;
+}
+
+.reports__page-header p {
+  margin: 0;
+  color: #7c8873;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.reports__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.reports__date {
+  display: inline-flex;
+  min-height: 31px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid #e1e7dc;
+  border-radius: 5px;
+  color: #74816d;
+  background: #fff;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.reports__withdraw {
+  display: inline-flex;
+  min-height: 31px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid #4f8a1c;
+  border-radius: 5px;
+  color: #fff;
+  background: #4f8a1c;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reports__withdraw:hover {
+  background: #3f7414;
+}
+
+.reports__sample-notice,
+.reports__notice {
+  margin: -7px 0 0;
+  color: #7b8675;
+  font-size: 9px;
+}
+
+.reports__notice {
+  margin: 0;
+  color: #687a5d;
+}
+
+.reports__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reports__stat {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e1e7dc;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.reports__stat--red {
+  border-color: #f0d7d4;
+}
+
+.reports__stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.reports__stat-top h2 {
+  overflow: hidden;
+  margin: 0;
+  color: #74816d;
+  font-size: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports__stat-tag {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: #468026;
+  background: #edf5e6;
+  font-size: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reports__stat--red .reports__stat-tag {
+  color: #bc4b40;
+  background: #fff0ee;
+}
+
+.reports__stat-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  margin-top: 5px;
+  color: #4d812e;
+}
+
+.reports__stat--red .reports__stat-value-row {
+  color: #d05244;
+}
+
+.reports__stat-value-row strong {
+  overflow: hidden;
+  color: #2e4228;
+  font-size: 14px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports__stat--red .reports__stat-value-row strong {
+  color: #c64b41;
+}
+
+.reports__stat p {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: #87917f;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports__product-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.reports__panel {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e1e7dc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reports__panel--dead-stock {
+  border-color: #f0d7d4;
+}
+
+.reports__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.reports__panel-header h2,
+.reports__withdrawals-header h2 {
+  margin: 0 0 3px;
+  color: #30402a;
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.reports__panel-header p,
+.reports__withdrawals-header p {
+  margin: 0;
+  color: #87917f;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.reports__panel-header .status-badge {
+  min-height: 17px;
+  padding: 2px 5px;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.reports__product-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: report-product;
+}
+
+.reports__product-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 7px;
+  border: 1px solid #edf0e9;
+  border-radius: 5px;
+  background: #fbfcfa;
+  counter-increment: report-product;
+}
+
+.reports__panel--dead-stock .reports__product-row {
+  border-color: #f2e4e2;
+  background: #fffafa;
+}
+
+.reports__rank {
+  flex: 0 0 auto;
+  color: #58664f;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.reports__product-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.reports__product-copy strong {
+  overflow: hidden;
+  color: #3b4935;
+  font-size: 7px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports__product-copy small {
+  overflow: hidden;
+  color: #87917f;
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports__product-sold {
+  margin-left: auto;
+  color: #39812a;
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.reports__dead-stock-summary {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.reports__dead-stock-summary strong {
+  color: #c64b41;
+  font-size: 7px;
+}
+
+.reports__dead-stock-summary small {
+  color: #c4776e;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.reports__withdrawals {
+  overflow: hidden;
+  border: 1px solid #e1e7dc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reports__withdrawals-header {
+  padding: 11px 12px 8px;
+}
+
+.reports__empty {
+  margin: 0;
+  padding: 18px 12px;
+  color: #87917f;
+  font-size: 8px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.reports__withdrawals .datatable {
+  min-width: 900px;
+}
+
+.reports__withdrawals .datatable th {
+  padding: 9px 8px;
+  font-size: 7px;
+}
+
+.reports__withdrawals .datatable td {
+  padding: 9px 8px;
+  font-size: 8px;
+}
+
+.reports__withdrawal-id {
+  color: #41802a;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.reports__withdrawal-amount {
+  color: #33452d;
+  white-space: nowrap;
+}
+
+.reports__evidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #4f812d;
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.reports__evidence--pending {
+  color: #87917f;
+}
+
+@media (max-width: 1050px) {
+  .reports__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .reports__page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports__product-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .reports__stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reports__header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .reports__dead-stock-summary small {
+    white-space: normal;
+  }
+}

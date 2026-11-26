@@ -1,0 +1,261 @@
+.order-detail__backdrop {
+  position: fixed;
+  z-index: 1100;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  padding: 10px;
+  background: rgb(24 34 21 / 58%);
+  inset: 0;
+}
+
+.order-detail {
+  display: flex;
+  width: min(100%, 680px);
+  max-height: calc(100vh - 20px);
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px 15px 11px;
+  border: 1px solid #e4e9dc;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgb(17 28 14 / 25%);
+}
+
+.order-detail__header {
+  flex: 0 0 auto;
+  margin-bottom: 7px;
+}
+
+.order-detail__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-detail__title-row h2 {
+  margin: 0;
+  color: #242d22;
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.order-detail__header > div > p {
+  margin: 4px 0 0;
+  color: #92978d;
+  font-size: 9px;
+}
+
+.order-detail__content {
+  display: grid;
+  min-height: 0;
+  gap: 9px;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.order-detail__recipient {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid #e5e9e1;
+  border-radius: 7px;
+  color: #5d6758;
+  background: #fafbf9;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.order-detail__recipient > strong {
+  color: #34442e;
+  font-size: 8px;
+}
+
+.order-detail__recipient p {
+  margin: 1px 0 0;
+  color: #688555;
+}
+
+.order-detail__items {
+  padding: 5px 7px;
+  border: 1px solid #e5e9e1;
+  border-radius: 7px;
+}
+
+.order-detail__items-scroll {
+  overflow-x: auto;
+}
+
+.order-detail__items table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  color: #4a5444;
+  font-size: 7px;
+  text-align: left;
+}
+
+.order-detail__items th {
+  padding: 2px 3px 4px;
+  color: #828b7b;
+  font-size: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.order-detail__items td {
+  padding: 2px 3px;
+}
+
+.order-detail__items th:not(:first-child),
+.order-detail__items td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.order-detail__items th:first-child,
+.order-detail__items td:first-child {
+  width: 52%;
+}
+
+.order-detail__totals {
+  display: grid;
+  gap: 2px;
+  margin: 4px 3px 0;
+  padding-top: 4px;
+  border-top: 1px dashed #dfe4da;
+  color: #687162;
+  font-size: 7px;
+}
+
+.order-detail__totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.order-detail__totals dt,
+.order-detail__totals dd {
+  margin: 0;
+}
+
+.order-detail__discount {
+  color: #d05244;
+}
+
+.order-detail__totals .order-detail__grand-total {
+  margin-top: 2px;
+  color: #283a20;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.order-detail__courier {
+  display: grid;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid #e0ead8;
+  border-radius: 7px;
+  background: #f5f9f1;
+}
+
+.order-detail__courier > strong {
+  color: #34442e;
+  font-size: 9px;
+}
+
+.order-detail__courier label {
+  color: #788273;
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.order-detail__courier select {
+  width: 100%;
+  min-height: 27px;
+  padding: 6px 8px;
+  border: 1px solid #dfe5da;
+  border-radius: 5px;
+  outline: 0;
+  color: #46513f;
+  background: #fff;
+  font: inherit;
+  font-size: 9px;
+}
+
+.order-detail__courier select:focus {
+  border-color: #75a94b;
+  box-shadow: 0 0 0 3px rgb(79 138 28 / 10%);
+}
+
+.order-detail__footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.order-detail__button {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid #dfe6d9;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.order-detail__button--close {
+  margin-right: auto;
+  color: #64705e;
+  background: #fff;
+}
+
+.order-detail__button--print {
+  border-color: #7bab54;
+  color: #4f852b;
+  background: #f7fbf4;
+}
+
+.order-detail__button--dispatch {
+  border-color: #4f8a1c;
+  color: #fff;
+  background: #4f8a1c;
+}
+
+.order-detail__button--dispatch:hover:not(:disabled) {
+  background: #3f7414;
+}
+
+.order-detail__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .order-detail__backdrop {
+    padding: 8px;
+  }
+
+  .order-detail {
+    max-height: calc(100vh - 16px);
+    padding: 12px 10px 10px;
+  }
+
+  .order-detail__title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .order-detail__footer {
+    flex-wrap: wrap;
+  }
+
+  .order-detail__button--close {
+    margin-right: 0;
+  }
+}

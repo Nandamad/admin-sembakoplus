@@ -1,0 +1,40 @@
+.sales-chart {
+  display: flex;
+  min-height: 238px;
+  flex-direction: column;
+}
+
+.sales-chart__plot {
+  min-height: 0;
+  flex: 1;
+  padding: 0 10px 10px;
+}
+
+.sales-chart__empty {
+  display: grid;
+  height: 100%;
+  min-height: 170px;
+  place-items: center;
+  margin: 0;
+  color: #87917f;
+  font-size: 10px;
+  text-align: center;
+}
+
+.sales-chart--loading {
+  display: grid;
+  place-items: center;
+  color: #87917f;
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .sales-chart {
+    min-height: 220px;
+  }
+
+  .sales-chart__plot {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+}

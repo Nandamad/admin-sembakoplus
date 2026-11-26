@@ -1,0 +1,64 @@
+.datatable__scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.datatable {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.datatable th {
+  padding: 11px 12px;
+  color: #74816d;
+  background: #f8faf5;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.datatable td {
+  padding: 12px;
+  border-top: 1px solid #edf0e9;
+  color: #475243;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.datatable tbody tr:hover {
+  background: #fbfcf9;
+}
+
+.datatable__stack {
+  display: grid;
+  gap: 4px;
+}
+
+.datatable__primary {
+  color: #2c4c1c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.datatable__secondary {
+  color: #87917f;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.datatable__action {
+  color: #4f8a1c;
+  font-size: 10px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.datatable__action:hover {
+  color: #1f3d12;
+  text-decoration: underline;
+}

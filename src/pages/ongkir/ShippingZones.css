@@ -1,0 +1,258 @@
+.shipping-zones {
+  display: grid;
+  gap: 13px;
+}
+
+.shipping-zones .page-header {
+  margin-bottom: 0;
+}
+
+.shipping-zones__sample-notice {
+  margin: -7px 0 0;
+  color: #7b8675;
+  font-size: 9px;
+}
+
+.shipping-zones__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shipping-zones__stat {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #e1e7dc;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.shipping-zones__stat-icon {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.shipping-zones__stat-icon--green {
+  color: #4e8a28;
+  background: #edf5e6;
+}
+
+.shipping-zones__stat-icon--blue {
+  color: #3f7ca4;
+  background: #eaf3f8;
+}
+
+.shipping-zones__stat-icon--orange {
+  color: #ce762f;
+  background: #fff2e5;
+}
+
+.shipping-zones__stat-icon--purple {
+  color: #7b6bab;
+  background: #f1eff9;
+}
+
+.shipping-zones__stat > div {
+  min-width: 0;
+}
+
+.shipping-zones__stat p {
+  overflow: hidden;
+  margin: 0 0 3px;
+  color: #7b8675;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shipping-zones__stat strong {
+  display: block;
+  overflow: hidden;
+  color: #31452a;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shipping-zones__stat small {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: #90998a;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shipping-zones__table-card {
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid #e1e7dc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.shipping-zones__table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px 9px;
+}
+
+.shipping-zones__table-header h2 {
+  margin: 0 0 4px;
+  color: #30402a;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.shipping-zones__table-header p {
+  margin: 0;
+  color: #87917f;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.shipping-zones__add {
+  display: inline-flex;
+  min-height: 29px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid #4f8a1c;
+  border-radius: 5px;
+  color: #fff;
+  background: #4f8a1c;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.shipping-zones__add:hover {
+  background: #3f7414;
+}
+
+.shipping-zones__table-card .datatable {
+  min-width: 900px;
+}
+
+.shipping-zones__table-card .datatable th {
+  padding: 9px 8px;
+  font-size: 7px;
+}
+
+.shipping-zones__table-card .datatable td {
+  padding: 8px;
+  font-size: 8px;
+}
+
+.shipping-zones__name {
+  display: grid;
+  min-width: 150px;
+  gap: 3px;
+}
+
+.shipping-zones__name strong {
+  color: #3a4934;
+  font-size: 8px;
+}
+
+.shipping-zones__name small {
+  max-width: 190px;
+  overflow: hidden;
+  color: #899283;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shipping-zones__fee {
+  color: #39822a;
+  white-space: nowrap;
+}
+
+.shipping-zones__actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.shipping-zones__action {
+  display: inline-flex;
+  min-height: 23px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border: 1px solid #dfe9d7;
+  border-radius: 4px;
+  color: #4d812e;
+  background: #f7fbf4;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.shipping-zones__action:hover {
+  background: #edf5e6;
+}
+
+.shipping-zones__action--delete {
+  border-color: #f2d9d5;
+  color: #c94b40;
+  background: #fff7f5;
+}
+
+.shipping-zones__action--delete:hover {
+  background: #fff0ed;
+}
+
+.shipping-zones__notice {
+  margin: 0;
+  padding: 0 12px 8px;
+  color: #687a5d;
+  font-size: 9px;
+}
+
+.shipping-zones__table-footer {
+  padding: 9px 12px;
+  color: #8b9484;
+  background: #fbfcfa;
+  font-size: 8px;
+}
+
+.shipping-zones__empty {
+  margin: 0;
+  padding: 25px 15px;
+  color: #87917f;
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  .shipping-zones__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .shipping-zones__stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shipping-zones__table-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
