@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout.jsx'
 import { MENU } from './layouts/menu.js'
@@ -13,6 +14,48 @@ import CourierSchedule from './pages/jam-kurir/CourierSchedule.jsx'
 import PointsRewards from './pages/poin/PointsRewards.jsx'
 import ReportsPage from './pages/laporan/ReportsPage.jsx'
 import CategoryManagement from './pages/kategori/CategoryManagement.jsx'
+import api, {
+  clearAdminSession,
+  getAdminToken,
+  getStoredAdminUser,
+  isAdminUser,
+  saveAdminSession,
+} from './services/api.js'
+
+function RequireAdminAuth() {
+  const token = getAdminToken()
+  const [verified, setVerified] = useState(() => Boolean(token && isAdminUser(getStoredAdminUser())))
+
+  useEffect(() => {
+    if (!token) return undefined
+    let active = true
+    api.get('/profile')
+      .then(({ data }) => {
+        if (!active) return
+        const profile = data?.data
+        if (!isAdminUser(profile)) {
+          clearAdminSession()
+          setVerified(false)
+          return
+        }
+        saveAdminSession(token, profile)
+        setVerified(true)
+      })
+      .catch(() => {
+        if (active) {
+          clearAdminSession()
+          setVerified(false)
+        }
+      })
+    return () => { active = false }
+  }, [token])
+
+  if (!token || !verified) {
+    return <Navigate replace to="/login" />
+  }
+
+  return <AdminLayout />
+}
 
 function UnavailablePage() {
   const { pathname } = useLocation()
@@ -31,11 +74,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<AdminLogin />} />
-        <Route
-          element={
-            import.meta.env.DEV ? <AdminLayout /> : <Navigate replace to="/login" />
-          }
-        >
+        <Route element={<RequireAdminAuth />}>
           <Route index element={<Dashboard />} />
           <Route path="banner" element={<BannerList />} />
           <Route path="produk" element={<ProdukList />} />

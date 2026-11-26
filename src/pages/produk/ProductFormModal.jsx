@@ -1,7 +1,7 @@
 import { Check, ImagePlus, UploadCloud, X } from 'lucide-react'
 import './ProductFormModal.css'
 
-const units = ['kg', 'pack', 'ikat', 'pouch', 'sak', 'ekor', 'liter', 'botol']
+const units = ['kg', 'gram', 'liter', 'ml', 'pcs', 'pack', 'ikat', 'pouch', 'sak', 'botol']
 
 function ProductFormModal({
   product,
@@ -10,7 +10,8 @@ function ProductFormModal({
   onClose,
   onSave,
   onUpload,
-  categories,
+  categories = [],
+  saving = false,
 }) {
   function handleChange(event) {
     const { checked, name, type, value } = event.target
@@ -45,7 +46,7 @@ function ProductFormModal({
             </h2>
             <p>
               Lengkapi detail informasi produk sembako agar tampil di aplikasi
-              user.
+              pelanggan.
             </p>
           </div>
           <button
@@ -69,9 +70,8 @@ function ProductFormModal({
             </span>
             <span className="product-modal__upload-copy">
               <UploadCloud aria-hidden="true" size={17} />
-              <strong>Upload Foto Produk Berkualitas</strong>
-              <small>Format PNG/JPG · Rasio 1:1 (Min. 500 × 500 px)</small>
-              <small>Latar belakang bersih dan pencahayaan terang.</small>
+              <strong>Upload Foto Produk (Opsional)</strong>
+              <small>Format PNG/JPG/WEBP · Maks 5 MB</small>
             </span>
           </label>
           <input
@@ -99,38 +99,57 @@ function ProductFormModal({
               <input
                 name="sku"
                 onChange={handleChange}
-                placeholder="SKU-SAY-018"
+                placeholder="SKU-SEMBAKO-01"
                 value={product.sku}
               />
             </label>
             <label className="product-modal__field">
               <span>Kategori Produk *</span>
               <select
-                name="category"
+                name="categoryId"
                 onChange={handleChange}
                 required
-                value={product.category}
+                value={String(product.categoryId || '')}
               >
                 <option disabled value="">
                   {categories.length ? 'Pilih kategori' : 'Kategori belum tersedia'}
                 </option>
                 {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                  <option key={category.id} value={String(category.id)}>
+                    {category.name}
                   </option>
                 ))}
               </select>
             </label>
             <label className="product-modal__field">
-              <span>Satuan Barang</span>
-              <select name="unit" onChange={handleChange} value={product.unit}>
-                <option value="">Pilih satuan</option>
-                {units.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
+              <span>Label Varian Utama *</span>
+              <input
+                name="variantName"
+                onChange={handleChange}
+                placeholder="Contoh: 1 Kg atau 500 Gram"
+                value={product.variantName}
+              />
+            </label>
+            <label className="product-modal__field">
+              <span>Bobot Angka &amp; Satuan *</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <input
+                  min="0.01"
+                  name="quantityValue"
+                  onChange={handleChange}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={product.quantityValue}
+                />
+                <select name="unit" onChange={handleChange} required value={product.unit}>
+                  {units.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </label>
             <label className="product-modal__field">
               <span>Harga Normal (Rp) *</span>
@@ -144,17 +163,18 @@ function ProductFormModal({
               />
             </label>
             <label className="product-modal__field">
-              <span>Harga Diskon / Promo (Opsional)</span>
+              <span>Harga Setelah Diskon (Opsional)</span>
               <input
                 min="0"
                 name="discountPrice"
                 onChange={handleChange}
+                placeholder="Kosongkan jika tidak diskon"
                 type="number"
                 value={product.discountPrice || ''}
               />
             </label>
             <label className="product-modal__field">
-              <span>Stok Gudang Awal *</span>
+              <span>Stok Gudang *</span>
               <input
                 min="0"
                 name="stock"
@@ -164,20 +184,19 @@ function ProductFormModal({
                 value={product.stock}
               />
             </label>
-            <label className="product-modal__field">
-              <span>Peringatan Stok Menipis</span>
+            <label className="product-modal__field product-modal__field--wide">
+              <span>Deskripsi Produk</span>
               <input
-                min="0"
-                name="lowStockAlert"
+                name="description"
                 onChange={handleChange}
-                type="number"
-                value={product.lowStockAlert}
+                placeholder="Keterangan singkat produk untuk pelanggan"
+                value={product.description}
               />
             </label>
           </div>
 
           <label className="product-modal__publish">
-            <span>Publikasikan &amp; Langsung Tampilkan di Aplikasi Mobile</span>
+            <span>Publikasikan &amp; Tampilkan di Aplikasi Mobile</span>
             <input
               checked={product.isPublished}
               name="isPublished"
@@ -195,14 +214,18 @@ function ProductFormModal({
             >
               Batal
             </button>
-            <button className="product-modal__save" type="submit">
+            <button className="product-modal__save" disabled={saving} type="submit">
               {product.imageUrl ? (
                 <ImagePlus aria-hidden="true" size={15} />
               ) : (
                 <Check aria-hidden="true" size={15} />
               )}
               <span>
-                {isEditing ? 'Simpan Perubahan' : 'Simpan & Publikasikan'}
+                {saving
+                  ? 'Menyimpan...'
+                  : isEditing
+                    ? 'Simpan Perubahan'
+                    : 'Simpan & Publikasikan'}
               </span>
             </button>
           </footer>

@@ -1,23 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LayoutGrid, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
+import api, { extractApiError } from '../../services/api.js'
 import CategoryFormModal from './CategoryFormModal.jsx'
 import './CategoryManagement.css'
-
-const initialCategories = []
 
 const emptyDraft = {
   name: '',
   slug: '',
   priority: '',
   description: '',
-  active: false,
-}
-
-function formatRupiah(value) {
-  return `Rp ${new Intl.NumberFormat('id-ID').format(value)}`
+  active: true,
 }
 
 function createSlug(value) {
@@ -28,18 +23,53 @@ function createSlug(value) {
     .replace(/^-|-$/g, '')
 }
 
+function mapApiCategory(category) {
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    priority: Number(category.sort_order ?? 0),
+    description: category.description || '',
+    active: Boolean(category.is_active),
+    skuCount: Number(category.products_count ?? 0),
+  }
+}
+
 function CategoryManagement() {
-  const [categories, setCategories] = useState(initialCategories)
+  const [categories, setCategories] = useState([])
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState(null)
   const [editing, setEditing] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
+
+  async function reloadCategories() {
+    const { data } = await api.get('/admin/categories')
+    setCategories((data?.data ?? []).map(mapApiCategory))
+  }
+
+  useEffect(() => {
+    let active = true
+    api.get('/admin/categories')
+      .then(({ data }) => {
+        if (active) setCategories((data?.data ?? []).map(mapApiCategory))
+      })
+      .catch((error) => {
+        if (active) setNotice(extractApiError(error, 'Kategori gagal dimuat.'))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [])
 
   const sortedCategories = useMemo(
     () => [...categories].sort((left, right) => left.priority - right.priority),
     [categories],
   )
+
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLowerCase()
     if (!query) return sortedCategories
@@ -49,13 +79,14 @@ function CategoryManagement() {
         category.slug.toLowerCase().includes(query),
     )
   }, [search, sortedCategories])
+
   const totalSkus = categories.reduce(
     (total, category) => total + category.skuCount,
     0,
   )
-  const bestSeller = categories.reduce(
-    (best, category) => (category.revenue > best.revenue ? category : best),
-    { name: '—', revenue: 0 },
+  const topCategory = categories.reduce(
+    (best, category) => (category.skuCount > best.skuCount ? category : best),
+    { name: '—', skuCount: -1 },
   )
 
   function openAddForm() {
@@ -68,59 +99,61 @@ function CategoryManagement() {
 
   function openEditForm(category) {
     setDraft({
+      id: category.id,
       name: category.name,
       slug: category.slug,
       priority: String(category.priority),
-      description: category.description,
+      description: category.description || '',
       active: category.active,
-      id: category.id,
     })
     setEditing(true)
     setNotice('')
   }
 
-  function saveCategory(event) {
+  async function saveCategory(event) {
     event.preventDefault()
-    const savedCategory = {
-      ...draft,
-      id: draft.id || `category-${Date.now()}`,
+    if (!draft) return false
+
+    const payload = {
       name: draft.name.trim(),
-      slug: createSlug(draft.name),
-      priority: Number(draft.priority),
-      description: draft.description.trim(),
-      skuCount: draft.skuCount || 0,
-      revenue: draft.revenue || 0,
-    }
-    const duplicateCategory = categories.some(
-      (category) =>
-        category.id !== savedCategory.id &&
-        (category.name.toLowerCase() === savedCategory.name.toLowerCase() ||
-          category.slug === savedCategory.slug),
-    )
-    if (duplicateCategory) return false
-
-    if (editing) {
-      setCategories((current) =>
-        current.map((category) =>
-          category.id === savedCategory.id ? savedCategory : category,
-        ),
-      )
-      setNotice('Kategori diperbarui pada tampilan ini. Belum disimpan ke server.')
-    } else {
-      setCategories((current) => [...current, savedCategory])
-      setNotice('Kategori ditambahkan pada tampilan ini. Belum disimpan ke server.')
+      description: draft.description.trim() || null,
+      sort_order: Number(draft.priority) || 0,
+      is_active: Boolean(draft.active),
     }
 
-    setDraft(null)
-    return true
+    try {
+      setSaving(true)
+      setNotice('')
+      if (editing) {
+        await api.patch(`/admin/categories/${draft.id}`, payload)
+        setNotice(`Kategori "${payload.name}" berhasil diperbarui.`)
+      } else {
+        await api.post('/admin/categories', payload)
+        setNotice(`Kategori "${payload.name}" berhasil dibuat.`)
+      }
+      await reloadCategories()
+      setDraft(null)
+      return true
+    } catch (error) {
+      setNotice(extractApiError(error, 'Kategori gagal disimpan.'))
+      return false
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function confirmDelete() {
-    setCategories((current) =>
-      current.filter((category) => category.id !== deleteTarget.id),
-    )
-    setNotice('Kategori dihapus dari tampilan ini. Belum dihapus dari server.')
-    setDeleteTarget(null)
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    try {
+      setNotice('')
+      await api.delete(`/admin/categories/${deleteTarget.id}`)
+      setNotice(`Kategori "${deleteTarget.name}" berhasil dihapus.`)
+      setDeleteTarget(null)
+      await reloadCategories()
+    } catch (error) {
+      setNotice(extractApiError(error, 'Kategori gagal dihapus.'))
+      setDeleteTarget(null)
+    }
   }
 
   const columns = [
@@ -147,21 +180,19 @@ function CategoryManagement() {
       key: 'slug',
       label: 'Slug Sistem',
       render: (category) => (
-        <code className="categories__slug">{category.slug}</code>
+        <code className="categories__slug">{category.slug || createSlug(category.name)}</code>
       ),
     },
     {
       key: 'skuCount',
-      label: 'Jumlah SKU',
+      label: 'Jumlah Produk',
       render: (category) => `${category.skuCount} Produk`,
     },
     {
-      key: 'revenue',
-      label: 'Kontribusi Omset',
+      key: 'description',
+      label: 'Deskripsi',
       render: (category) => (
-        <strong className="categories__revenue">
-          {formatRupiah(category.revenue)}
-        </strong>
+        <span className="categories__desc">{category.description || '—'}</span>
       ),
     },
     {
@@ -169,7 +200,7 @@ function CategoryManagement() {
       label: 'Status Tayang',
       render: (category) => (
         <StatusBadge tone={category.active ? 'green' : 'neutral'}>
-          {category.active ? 'Aktif Beranda' : 'Belum Aktif'}
+          {category.active ? 'Aktif Beranda' : 'Nonaktif'}
         </StatusBadge>
       ),
     },
@@ -207,8 +238,7 @@ function CategoryManagement() {
         <div>
           <h1>Kelola Kategori Produk Sembako</h1>
           <p>
-            Atur klasifikasi produk, ikon kategori, dan urutan tampil di aplikasi
-            mobile.
+            Atur klasifikasi produk, deskripsi, dan urutan tampil di aplikasi mobile.
           </p>
         </div>
         <div className="categories__header-actions">
@@ -232,10 +262,6 @@ function CategoryManagement() {
         </div>
       </header>
 
-      <p className="categories__sample-notice" role="note">
-        Data kategori akan dimuat setelah backend terhubung.
-      </p>
-
       <section className="categories__stats" aria-label="Ringkasan kategori">
         <article className="categories__stat">
           <span className="categories__stat-mark">01</span>
@@ -244,9 +270,9 @@ function CategoryManagement() {
             <strong>
               {categories.length
                 ? `${categories.filter((category) => category.active).length} Kategori`
-                : '—'}
+                : '0'}
             </strong>
-            <small>Data kategori dari backend</small>
+            <small>Dari total {categories.length} kategori</small>
           </div>
         </article>
         <article className="categories__stat">
@@ -254,9 +280,9 @@ function CategoryManagement() {
             02
           </span>
           <div>
-            <p>Total SKU Terklasifikasi</p>
-            <strong>{categories.length ? `${totalSkus} Produk` : '—'}</strong>
-            <small>Data produk dari backend</small>
+            <p>Total Produk Terklasifikasi</p>
+            <strong>{totalSkus} Produk</strong>
+            <small>Akumulasi seluruh kategori</small>
           </div>
         </article>
         <article className="categories__stat">
@@ -264,9 +290,13 @@ function CategoryManagement() {
             03
           </span>
           <div>
-            <p>Kategori Terlaris</p>
-            <strong>{bestSeller.name === '—' ? '—' : bestSeller.name.replace(' Pokok', '')}</strong>
-            <small>Kontribusi omzet tertinggi</small>
+            <p>Kategori Terbanyak</p>
+            <strong>{topCategory.skuCount >= 0 ? topCategory.name : '—'}</strong>
+            <small>
+              {topCategory.skuCount >= 0
+                ? `${topCategory.skuCount} produk`
+                : 'Belum ada data'}
+            </small>
           </div>
         </article>
         <article className="categories__stat">
@@ -274,9 +304,13 @@ function CategoryManagement() {
             04
           </span>
           <div>
-            <p>Prioritas Kategori</p>
-            <strong>—</strong>
-            <small>Menunggu data backend</small>
+            <p>Urutan Terdepan</p>
+            <strong>{sortedCategories[0]?.name || '—'}</strong>
+            <small>
+              {sortedCategories[0]
+                ? `Urutan #${sortedCategories[0].priority}`
+                : 'Belum tersedia'}
+            </small>
           </div>
         </article>
       </section>
@@ -287,7 +321,9 @@ function CategoryManagement() {
             {notice}
           </p>
         )}
-        {filteredCategories.length ? (
+        {loading ? (
+          <p className="categories__empty">Memuat kategori dari server...</p>
+        ) : filteredCategories.length ? (
           <DataTable
             columns={columns}
             label="Daftar kategori produk sembako"
@@ -312,13 +348,14 @@ function CategoryManagement() {
           onChange={setDraft}
           onClose={() => setDraft(null)}
           onSave={saveCategory}
+          saving={saving}
         />
       )}
 
       {deleteTarget && (
         <ConfirmDialog
           confirmLabel="Ya, Hapus Kategori"
-          message={`Kategori "${deleteTarget.name}" akan dihapus dari tampilan ini.`}
+          message={`Kategori "${deleteTarget.name}" akan dihapus permanen dari database.`}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
           title="Hapus Kategori?"

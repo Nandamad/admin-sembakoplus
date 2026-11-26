@@ -5,38 +5,31 @@ import './ShippingZoneFormModal.css'
 function ShippingZoneFormModal({
   draft,
   editing,
+  rateTypes = [],
   onChange,
   onClose,
   onSave,
+  saving = false,
 }) {
   const [message, setMessage] = useState('')
 
   function handleChange(event) {
-    const { name, value } = event.target
-    onChange({ ...draft, [name]: value })
+    const { checked, name, type, value } = event.target
+    onChange({ ...draft, [name]: type === 'checkbox' ? checked : value })
     setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    const radiusValues = draft.radiusRange.match(/\d+(?:[.,]\d+)?/g) || []
 
-    if (!radiusValues.length) {
-      setMessage('Masukkan rentang radius dalam kilometer.')
+    if (Number(draft.maxKm) <= Number(draft.minKm)) {
+      setMessage('Jarak akhir (KM) harus lebih besar dari jarak awal (KM).')
       return
     }
 
-    if (
-      radiusValues.length > 1 &&
-      Number(radiusValues[0].replace(',', '.')) >
-        Number(radiusValues[1].replace(',', '.'))
-    ) {
-      setMessage('Radius akhir harus lebih besar atau sama dengan radius awal.')
-      return
-    }
-
-    if (onSave(event) === false) {
-      setMessage('Nama zona sudah digunakan. Gunakan nama yang berbeda.')
+    const result = await onSave(event)
+    if (typeof result === 'string') {
+      setMessage(result)
       return
     }
     setMessage('')
@@ -58,16 +51,14 @@ function ShippingZoneFormModal({
         <header className="shipping-zone-modal__header">
           <div>
             <h2 id="shipping-zone-modal-title">
-              {editing
-                ? `Edit Skema & Zona Ongkir: ${draft.zoneLabel}`
-                : 'Tambah Skema & Zona Ongkir Baru'}
+              {editing ? 'Edit Tier Tarif Ongkir' : 'Tambah Tier Tarif Ongkir'}
             </h2>
             <p>
-              Tentukan batasan radius kilometer, tarif dasar, dan subsidi toko
+              Rentang jarak (KM) akan dikonversi ke meter dan divalidasi kontiguitasnya oleh backend.
             </p>
           </div>
           <button
-            aria-label="Tutup form zona ongkir"
+            aria-label="Tutup form tier ongkir"
             className="shipping-zone-modal__close"
             onClick={onClose}
             type="button"
@@ -78,66 +69,80 @@ function ShippingZoneFormModal({
 
         <form className="shipping-zone-modal__form" onSubmit={handleSubmit}>
           <label className="shipping-zone-modal__field">
-            <span>Nama Zona &amp; Wilayah Cakupan *</span>
-            <input
-              autoFocus
-              maxLength={120}
-              name="zoneLabel"
+            <span>Jenis Layanan *</span>
+            <select
+              name="rateTypeId"
               onChange={handleChange}
-              placeholder="Masukkan nama zona dan wilayah"
               required
-              value={draft.zoneLabel}
-            />
+              value={draft.rateTypeId}
+            >
+              {rateTypes.map((type) => (
+                <option key={type.id} value={String(type.id)}>
+                  {type.name} — {type.description || 'Layanan pengiriman'}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="shipping-zone-modal__field">
-            <span>Rentang Radius Kilometer (KM) *</span>
-            <input
-              maxLength={40}
-              name="radiusRange"
-              onChange={handleChange}
-              placeholder="Masukkan rentang radius (KM)"
-              required
-              value={draft.radiusRange}
-            />
-          </label>
-
-          <label className="shipping-zone-modal__field">
-            <span>Tarif Ongkos Kirim Standar (Rp) *</span>
+            <span>Jarak Minimum (KM) *</span>
             <input
               min="0"
-              name="normalFee"
+              name="minKm"
               onChange={handleChange}
-              placeholder="Masukkan tarif standar"
               required
+              step="0.1"
               type="number"
-              value={draft.normalFee}
+              value={draft.minKm}
             />
           </label>
 
           <label className="shipping-zone-modal__field">
-            <span>Alokasi Subsidi Ongkir Toko (Rp) *</span>
+            <span>Jarak Maksimum (KM) *</span>
+            <input
+              min="0.1"
+              name="maxKm"
+              onChange={handleChange}
+              required
+              step="0.1"
+              type="number"
+              value={draft.maxKm}
+            />
+          </label>
+
+          <label className="shipping-zone-modal__field">
+            <span>Tarif Ongkos Kirim (Rp) *</span>
             <input
               min="0"
-              name="subsidy"
+              name="fee"
               onChange={handleChange}
-              placeholder="Masukkan alokasi subsidi"
               required
               type="number"
-              value={draft.subsidy}
+              value={draft.fee}
             />
           </label>
 
           <label className="shipping-zone-modal__field">
-            <span>Estimasi Durasi Pengantaran Kurir *</span>
+            <span>Prioritas</span>
             <input
-              maxLength={40}
-              name="eta"
+              min="0"
+              name="priority"
               onChange={handleChange}
-              placeholder="Masukkan estimasi durasi"
-              required
-              value={draft.eta}
+              type="number"
+              value={draft.priority}
             />
+          </label>
+
+          <label className="shipping-zone-modal__field">
+            <span>Status Tier</span>
+            <select
+              name="active"
+              onChange={(event) => onChange({ ...draft, active: event.target.value === 'true' })}
+              value={String(Boolean(draft.active))}
+            >
+              <option value="true">Aktif</option>
+              <option value="false">Nonaktif</option>
+            </select>
           </label>
 
           {message && (
@@ -154,8 +159,8 @@ function ShippingZoneFormModal({
             >
               Batal
             </button>
-            <button className="shipping-zone-modal__submit" type="submit">
-              Simpan Zona Ongkir
+            <button className="shipping-zone-modal__submit" disabled={saving} type="submit">
+              {saving ? 'Menyimpan...' : 'Simpan Tier Ongkir'}
             </button>
           </footer>
         </form>

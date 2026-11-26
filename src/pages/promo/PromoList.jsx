@@ -1,14 +1,13 @@
-import { useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Pencil, Plus, Send, Trash2 } from 'lucide-react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import PageHeader from '../../components/PageHeader.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
+import api, { extractApiError } from '../../services/api.js'
 import FlashSalePanel from './FlashSalePanel.jsx'
 import PromoForm from './PromoForm.jsx'
 import './PromoList.css'
-
-const initialVouchers = []
 
 const emptyVoucher = {
   code: '',
@@ -16,34 +15,103 @@ const emptyVoucher = {
   type: 'fixed',
   discountValue: '',
   discountMax: '',
-  minSpend: '',
+  minSpend: 0,
   quota: '',
-  claimed: 0,
+  perCustomerLimit: 1,
   startsAt: '',
   endsAt: '',
-  isActive: false,
+  canCombineCoin: true,
+  isActive: true,
+}
+
+function toInputDateTime(iso) {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function mapApiVoucher(voucher) {
+  return {
+    id: voucher.id,
+    code: voucher.code || '',
+    name: voucher.name || '',
+    type: voucher.voucher_type || 'fixed',
+    discountValue: Number(voucher.discount_value ?? 0),
+    discountMax: voucher.maximum_discount ?? '',
+    minSpend: Number(voucher.minimum_purchase ?? 0),
+    quota: voucher.global_quota ?? '',
+    perCustomerLimit: voucher.per_customer_limit ?? '',
+    startsAt: toInputDateTime(voucher.start_at),
+    endsAt: toInputDateTime(voucher.end_at),
+    canCombineCoin: Boolean(voucher.can_combine_coin),
+    isActive: voucher.status === 'active',
+    status: voucher.status,
+    rules: voucher.distribution_rules ?? [],
+  }
 }
 
 function formatRupiah(value) {
-  return `Rp ${new Intl.NumberFormat('id-ID').format(value)}`
+  return `Rp ${new Intl.NumberFormat('id-ID').format(Number(value || 0))}`
 }
 
 function getDiscountLabel(voucher) {
   if (voucher.type === 'free_shipping') {
-    return `Potongan Ongkir ${formatRupiah(voucher.discountValue)}`
+    return `Subsidi Ongkir ${formatRupiah(voucher.discountValue)}`
   }
   if (voucher.type === 'percentage') {
-    return `Diskon ${voucher.discountValue}% (Maks. ${formatRupiah(voucher.discountMax || 0)})`
+    return `Diskon ${voucher.discountValue}%${voucher.discountMax ? ` (Maks. ${formatRupiah(voucher.discountMax)})` : ''}`
   }
-  return `Potongan Langsung ${formatRupiah(voucher.discountValue)}`
+  return `Potongan ${formatRupiah(voucher.discountValue)}`
 }
 
 function PromoList() {
-  const [vouchers, setVouchers] = useState(initialVouchers)
+  const [vouchers, setVouchers] = useState([])
+  const [customers, setCustomers] = useState([])
+  const [usages, setUsages] = useState([])
   const [draft, setDraft] = useState(null)
   const [editing, setEditing] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [assignTarget, setAssignTarget] = useState(null)
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [distributionType, setDistributionType] = useState('manual')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
+
+  async function reloadVouchers() {
+    const [voucherRes, usageRes] = await Promise.all([
+      api.get('/admin/vouchers'),
+      api.get('/admin/voucher-usages').catch(() => ({ data: { data: [] } })),
+    ])
+    setVouchers((voucherRes.data?.data ?? []).map(mapApiVoucher))
+    setUsages(usageRes.data?.data ?? [])
+  }
+
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      api.get('/admin/vouchers'),
+      api.get('/admin/users', { params: { role: 'customer' } }),
+      api.get('/admin/voucher-usages').catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([voucherRes, userRes, usageRes]) => {
+        if (!active) return
+        setVouchers((voucherRes.data?.data ?? []).map(mapApiVoucher))
+        const customerList = userRes.data?.data ?? []
+        setCustomers(customerList)
+        if (customerList[0]) setSelectedCustomerId(String(customerList[0].id))
+        setUsages(usageRes.data?.data ?? [])
+      })
+      .catch((error) => {
+        if (active) setNotice(extractApiError(error, 'Data voucher gagal dimuat.'))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [])
 
   function openAddForm() {
     setDraft({ ...emptyVoucher })
@@ -57,49 +125,88 @@ function PromoList() {
     setNotice('')
   }
 
-  function saveVoucher(event) {
+  async function saveVoucher(event) {
     event.preventDefault()
-    const savedVoucher = {
-      ...draft,
-      id: draft.id || `voucher-${Date.now()}`,
-      code: draft.code.trim().toUpperCase(),
+    if (!draft) return false
+
+    const payload = {
       name: draft.name.trim(),
-      discountValue: Number(draft.discountValue) || 0,
-      discountMax: Number(draft.discountMax) || 0,
-      minSpend: Number(draft.minSpend) || 0,
-      quota: Number(draft.quota),
-      claimed: Number(draft.claimed) || 0,
+      code: draft.code.trim().toUpperCase(),
+      voucher_type: draft.type,
+      discount_value: Number(draft.discountValue) || 0,
+      maximum_discount: draft.discountMax !== '' && draft.discountMax !== null ? Number(draft.discountMax) : null,
+      minimum_purchase: Number(draft.minSpend) || 0,
+      global_quota: draft.quota !== '' && draft.quota !== null ? Number(draft.quota) : null,
+      per_customer_limit: draft.perCustomerLimit !== '' && draft.perCustomerLimit !== null ? Number(draft.perCustomerLimit) : null,
+      start_at: draft.startsAt || null,
+      end_at: draft.endsAt || null,
+      can_combine_coin: Boolean(draft.canCombineCoin),
+      status: draft.isActive ? 'active' : 'inactive',
     }
 
-    const duplicateCode = vouchers.some(
-      (voucher) =>
-        voucher.code.toLowerCase() === savedVoucher.code.toLowerCase() &&
-        voucher.id !== savedVoucher.id,
-    )
-    if (duplicateCode) return false
-
-    if (editing) {
-      setVouchers((current) =>
-        current.map((voucher) =>
-          voucher.id === savedVoucher.id ? savedVoucher : voucher,
-        ),
-      )
-      setNotice('Voucher diperbarui pada tampilan ini. Belum disimpan ke server.')
-    } else {
-      setVouchers((current) => [savedVoucher, ...current])
-      setNotice('Voucher ditambahkan pada tampilan ini. Belum disimpan ke server.')
+    try {
+      setSaving(true)
+      setNotice('')
+      if (editing) {
+        await api.patch(`/admin/vouchers/${draft.id}`, payload)
+        setNotice(`Voucher ${payload.code} berhasil diperbarui.`)
+      } else {
+        const { data } = await api.post('/admin/vouchers', payload)
+        const createdId = data?.data?.id
+        if (createdId) {
+          await api.post(`/admin/vouchers/${createdId}/distribution-rules`, {
+            distribution_type: 'code',
+            is_active: true,
+          }).catch(() => {})
+        }
+        setNotice(`Voucher ${payload.code} berhasil diterbitkan ke database.`)
+      }
+      await reloadVouchers()
+      setDraft(null)
+      return true
+    } catch (error) {
+      setNotice(extractApiError(error, 'Voucher gagal disimpan.'))
+      return false
+    } finally {
+      setSaving(false)
     }
-
-    setDraft(null)
-    return true
   }
 
-  function confirmDelete() {
-    setVouchers((current) =>
-      current.filter((voucher) => voucher.id !== deleteTarget.id),
-    )
-    setNotice('Voucher dihapus dari tampilan ini. Belum dihapus dari server.')
-    setDeleteTarget(null)
+  async function handleAssignCustomer(event) {
+    event.preventDefault()
+    if (!assignTarget || !selectedCustomerId) return
+    try {
+      setNotice('')
+      await api.post(`/admin/vouchers/${assignTarget.id}/distribution-rules`, {
+        distribution_type: distributionType,
+        is_active: true,
+      }).catch(() => {})
+
+      await api.post(`/admin/vouchers/${assignTarget.id}/assign-customers`, {
+        user_ids: [Number(selectedCustomerId)],
+      })
+      const customerName =
+        customers.find((user) => String(user.id) === selectedCustomerId)?.name || 'Pelanggan'
+      setNotice(`Voucher ${assignTarget.code} berhasil diberikan kepada ${customerName}.`)
+      setAssignTarget(null)
+      await reloadVouchers()
+    } catch (error) {
+      setNotice(extractApiError(error, 'Gagal memberikan voucher ke pelanggan.'))
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    try {
+      setNotice('')
+      await api.delete(`/admin/vouchers/${deleteTarget.id}`)
+      setDeleteTarget(null)
+      await reloadVouchers()
+      setNotice(`Voucher "${deleteTarget.code}" berhasil dihapus.`)
+    } catch (error) {
+      setNotice(extractApiError(error, 'Gagal menghapus voucher.'))
+      setDeleteTarget(null)
+    }
   }
 
   const columns = [
@@ -107,7 +214,7 @@ function PromoList() {
       key: 'code',
       label: 'Kode Voucher',
       render: (voucher) => (
-        <strong className="promos__code">{voucher.code}</strong>
+        <strong className="promos__code">{voucher.code || `#${voucher.id}`}</strong>
       ),
     },
     {
@@ -119,7 +226,7 @@ function PromoList() {
     },
     {
       key: 'discount',
-      label: 'Potongan / Cashback',
+      label: 'Potongan',
       render: (voucher) => getDiscountLabel(voucher),
     },
     {
@@ -129,10 +236,10 @@ function PromoList() {
     },
     {
       key: 'quota',
-      label: 'Kuota Klaim',
+      label: 'Kuota Global',
       render: (voucher) => (
         <span className="promos__quota">
-          {voucher.claimed} / {voucher.quota} Terpakai
+          {voucher.quota ? `${voucher.quota} Klaim` : 'Tanpa Batas'}
         </span>
       ),
     },
@@ -141,7 +248,7 @@ function PromoList() {
       label: 'Status',
       render: (voucher) => (
         <StatusBadge tone={voucher.isActive ? 'green' : 'neutral'}>
-          {voucher.isActive ? 'Aktif' : 'Nonaktif'}
+          {voucher.isActive ? 'Aktif' : voucher.status || 'Nonaktif'}
         </StatusBadge>
       ),
     },
@@ -150,6 +257,16 @@ function PromoList() {
       label: 'Aksi',
       render: (voucher) => (
         <div className="promos__actions">
+          <button
+            aria-label={`Bagikan voucher ${voucher.code}`}
+            className="promos__action"
+            onClick={() => setAssignTarget(voucher)}
+            title="Berikan ke pelanggan"
+            type="button"
+          >
+            <Send aria-hidden="true" size={13} />
+            Kirim
+          </button>
           <button
             aria-label={`Edit voucher ${voucher.code}`}
             className="promos__action"
@@ -178,8 +295,8 @@ function PromoList() {
   return (
     <div className="promos">
       <PageHeader
-        title="Kelola Promo & Flash Sale"
-        description="Atur durasi countdown timer flash sale dan kuota voucher diskon pengguna."
+        title="Kelola Promo, Diskon Produk & Voucher"
+        description="Atur diskon per produk, terbitkan voucher, dan bagikan kupon langsung ke pelanggan."
       />
 
       <FlashSalePanel />
@@ -188,7 +305,9 @@ function PromoList() {
         <header className="promos__table-header">
           <div>
             <h2>Daftar Kupon &amp; Voucher Promo Pengguna</h2>
-            <p>Kelola voucher yang tersedia untuk pelanggan aplikasi SembakoPlus.</p>
+            <p>
+              Total pemakaian tercatat di server: {usages.length} transaksi.
+            </p>
           </div>
           <button
             className="promos__add"
@@ -206,7 +325,9 @@ function PromoList() {
           </p>
         )}
 
-        {vouchers.length ? (
+        {loading ? (
+          <p className="promos__empty">Memuat data voucher...</p>
+        ) : vouchers.length ? (
           <DataTable
             columns={columns}
             label="Daftar kupon dan voucher promo"
@@ -219,12 +340,71 @@ function PromoList() {
         )}
       </section>
 
+      {assignTarget && (
+        <div
+          className="promo-form__backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setAssignTarget(null)
+          }}
+        >
+          <section className="promo-form" role="dialog" aria-modal="true">
+            <header className="promo-form__header">
+              <div>
+                <h2>Bagikan Voucher {assignTarget.code} ke Pelanggan</h2>
+                <p>Atur aturan distribusi dan pilih pelanggan penerima hak voucher.</p>
+              </div>
+            </header>
+            <form className="promo-form__body" onSubmit={handleAssignCustomer}>
+              <label className="promo-form__field promo-form__field--wide">
+                <span>Aturan Distribusi</span>
+                <select
+                  onChange={(event) => setDistributionType(event.target.value)}
+                  value={distributionType}
+                >
+                  <option value="manual">Pemberian Manual Admin</option>
+                  <option value="code">Klaim Kode Publik</option>
+                  <option value="new_customer">Pelanggan Baru</option>
+                  <option value="completed_order">Pasca Pesanan Selesai</option>
+                  <option value="minimum_transaction">Minimum Transaksi</option>
+                </select>
+              </label>
+              <label className="promo-form__field promo-form__field--wide">
+                <span>Pelanggan Penerima</span>
+                <select
+                  onChange={(event) => setSelectedCustomerId(event.target.value)}
+                  value={selectedCustomerId}
+                >
+                  {customers.map((user) => (
+                    <option key={user.id} value={String(user.id)}>
+                      {user.name} ({user.email || user.phone})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <footer className="promo-form__footer">
+                <button
+                  className="promo-form__cancel"
+                  onClick={() => setAssignTarget(null)}
+                  type="button"
+                >
+                  Batal
+                </button>
+                <button className="promo-form__submit" disabled={!selectedCustomerId} type="submit">
+                  Berikan Voucher
+                </button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
+
       {draft && (
         <PromoForm
           editing={editing}
           onChange={setDraft}
           onClose={() => setDraft(null)}
           onSave={saveVoucher}
+          saving={saving}
           voucher={draft}
         />
       )}
@@ -232,7 +412,7 @@ function PromoList() {
       {deleteTarget && (
         <ConfirmDialog
           confirmLabel="Ya, Hapus Voucher"
-          message={`Apakah Anda yakin ingin menghapus voucher "${deleteTarget.code}"? Kupon ini tidak akan dapat diklaim atau digunakan lagi oleh pelanggan.`}
+          message={`Apakah Anda yakin ingin menghapus voucher "${deleteTarget.code}" dari server?`}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
           title="Hapus Kupon Voucher?"

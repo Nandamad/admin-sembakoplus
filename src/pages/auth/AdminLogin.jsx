@@ -1,5 +1,13 @@
 import { useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
+import api, {
+  clearAdminSession,
+  extractApiError,
+  getAdminToken,
+  isAdminUser,
+  saveAdminSession,
+} from '../../services/api.js'
 import './AdminLogin.css'
 
 function GroceryIllustration() {
@@ -28,14 +36,54 @@ function GroceryIllustration() {
 }
 
 function AdminLogin() {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
 
-  function handleSubmit(event) {
+  if (getAdminToken()) {
+    return <Navigate replace to="/" />
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault()
-    setStatusMessage(
-      'Login belum dapat diproses karena backend autentikasi belum terhubung.',
-    )
+    setStatusMessage('')
+    setSubmitting(true)
+
+    try {
+      const response = await api.post('/auth/login', {
+        identifier: email.trim(),
+        password,
+      })
+      const token = response.data?.data?.token
+      const user = response.data?.data?.user
+
+      if (!token || !isAdminUser(user)) {
+        if (token) {
+          await api
+            .post(
+              '/auth/logout',
+              {},
+              { headers: { Authorization: `Bearer ${token}` } },
+            )
+            .catch(() => {})
+        }
+        clearAdminSession()
+        setStatusMessage('Akun ini tidak memiliki hak akses Administrator.')
+        return
+      }
+
+      saveAdminSession(token, user)
+      navigate('/', { replace: true })
+    } catch (error) {
+      setStatusMessage(
+        extractApiError(error, 'Email atau kata sandi administrator salah.'),
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -79,9 +127,11 @@ function AdminLogin() {
                 autoComplete="username"
                 id="admin-email"
                 name="email"
-                placeholder="adminexample@gmail.com"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@sembakogo.id"
                 required
                 type="email"
+                value={email}
               />
             </div>
 
@@ -94,9 +144,11 @@ function AdminLogin() {
                 autoComplete="current-password"
                 id="admin-password"
                 name="password"
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Masukkan kata sandi"
                 required
                 type={showPassword ? 'text' : 'password'}
+                value={password}
               />
               <button
                 aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
@@ -108,16 +160,15 @@ function AdminLogin() {
               </button>
             </div>
 
-            <label className="admin-login__remember">
-              <input name="remember" type="checkbox" />
-              <span>Ingat sesi masuk</span>
-            </label>
-
-            <button className="admin-login__submit" type="submit">
-              <span>Masuk ke Dashboard Admin</span>
+            <button
+              className="admin-login__submit"
+              disabled={submitting}
+              type="submit"
+            >
+              <span>{submitting ? 'Memproses...' : 'Masuk ke Dashboard Admin'}</span>
               <ArrowRight size={17} aria-hidden="true" />
             </button>
-            <p className="admin-login__status" aria-live="polite">
+            <p className="admin-login__status" aria-live="polite" role="alert">
               {statusMessage}
             </p>
           </form>

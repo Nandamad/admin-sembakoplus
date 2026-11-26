@@ -11,9 +11,7 @@ import {
 } from 'recharts'
 import './SalesChart.css'
 
-const sales = []
-
-function SalesChart() {
+function SalesChart({ sales = [], loading = false }) {
   return (
     <section className="dashboard__panel sales-chart">
       <div className="dashboard__panel-header">
@@ -22,7 +20,9 @@ function SalesChart() {
         </h2>
       </div>
       <div className="sales-chart__plot">
-        {sales.length ? (
+        {loading ? (
+          <p className="sales-chart__empty">Memuat tren penjualan...</p>
+        ) : sales.length ? (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={sales} margin={{ top: 18, right: 8, bottom: 0, left: 8 }}>
               <CartesianGrid
@@ -64,7 +64,7 @@ function SalesChart() {
           </ResponsiveContainer>
         ) : (
           <p className="sales-chart__empty">
-            Data penjualan belum tersedia dari backend.
+            Belum ada pesanan selesai dalam 7 hari terakhir.
           </p>
         )}
       </div>

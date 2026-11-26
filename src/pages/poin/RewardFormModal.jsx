@@ -2,23 +2,22 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import './RewardFormModal.css'
 
-function RewardFormModal({ draft, editing, onChange, onClose, onSave }) {
+function RewardFormModal({ draft, editing, onChange, onClose, onSave, saving = false }) {
   const [message, setMessage] = useState('')
 
   function handleChange(event) {
-    const { name, value } = event.target
-    onChange({ ...draft, [name]: value })
+    const { checked, name, type, value } = event.target
+    onChange({ ...draft, [name]: type === 'checkbox' ? checked : value })
     setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-
-    if (onSave(event) === false) {
-      setMessage('Nama reward sudah digunakan. Gunakan nama yang berbeda.')
+    const result = await onSave(event)
+    if (typeof result === 'string') {
+      setMessage(result)
       return
     }
-
     setMessage('')
   }
 
@@ -38,13 +37,10 @@ function RewardFormModal({ draft, editing, onChange, onClose, onSave }) {
         <header className="reward-form__header">
           <div>
             <h2 id="reward-form-title">
-              {editing
-                ? `Edit Reward & Kupon Poin: ${draft.name}`
-                : 'Buat Reward & Kupon Poin Loyalitas Baru'}
+              {editing ? `Edit Reward: ${draft.name}` : 'Buat Reward Penukaran Koin Baru'}
             </h2>
             <p>
-              Buat penawaran diskon sembako yang dapat ditukarkan pelanggan
-              dengan poin.
+              Buat hadiah atau potongan belanja yang dapat ditukar pelanggan dengan koin.
             </p>
           </div>
           <button
@@ -59,25 +55,32 @@ function RewardFormModal({ draft, editing, onChange, onClose, onSave }) {
 
         <form className="reward-form__body" onSubmit={handleSubmit}>
           <label className="reward-form__field">
-            <span>Nama Kupon / Reward Poin *</span>
+            <span>Nama Reward Poin *</span>
             <input
               autoFocus
-              maxLength={100}
+              maxLength={150}
               name="name"
               onChange={handleChange}
-              placeholder="Masukkan nama reward"
+              placeholder="Contoh: Potongan Belanja Rp5.000"
               required
               value={draft.name}
             />
           </label>
 
           <label className="reward-form__field">
-            <span>Jumlah Poin Penukaran Dibutuhkan *</span>
+            <span>Tipe Reward *</span>
+            <select name="type" onChange={handleChange} value={draft.type || 'discount'}>
+              <option value="discount">Diskon / Potongan (Rp)</option>
+              <option value="gift">Hadiah Barang (Gift)</option>
+            </select>
+          </label>
+
+          <label className="reward-form__field">
+            <span>Jumlah Koin Dibutuhkan *</span>
             <input
               min="1"
               name="pointsRequired"
               onChange={handleChange}
-              placeholder="Masukkan jumlah poin"
               required
               type="number"
               value={draft.pointsRequired}
@@ -85,42 +88,50 @@ function RewardFormModal({ draft, editing, onChange, onClose, onSave }) {
           </label>
 
           <label className="reward-form__field">
-            <span>Nilai Potongan Diskon (Rp) *</span>
+            <span>Nilai Reward (Rp)</span>
             <input
-              min="1"
+              min="0"
               name="discountAmount"
               onChange={handleChange}
-              placeholder="Masukkan nilai potongan"
-              required
+              placeholder="Contoh: 5000"
               type="number"
               value={draft.discountAmount}
             />
           </label>
 
           <label className="reward-form__field">
-            <span>Syarat Minimal Belanja Pengguna (Rp) *</span>
+            <span>Stok / Kuota Reward (Opsional)</span>
             <input
               min="0"
-              name="minSpend"
+              name="quota"
               onChange={handleChange}
-              placeholder="Masukkan minimal belanja"
-              required
+              placeholder="Kosongkan jika tak terbatas"
               type="number"
-              value={draft.minSpend}
+              value={draft.quota ?? ''}
             />
           </label>
 
           <label className="reward-form__field">
-            <span>Alokasi Kuota Klaim Voucher *</span>
+            <span>Deskripsi</span>
             <input
-              min="1"
-              name="quota"
+              maxLength={255}
+              name="description"
               onChange={handleChange}
-              placeholder="Masukkan jumlah kuota"
-              required
-              type="number"
-              value={draft.quota}
+              placeholder="Keterangan penukaran reward"
+              value={draft.description || ''}
             />
+          </label>
+
+          <label className="reward-form__field">
+            <span>Status</span>
+            <select
+              name="active"
+              onChange={(event) => onChange({ ...draft, active: event.target.value === 'true' })}
+              value={String(Boolean(draft.active))}
+            >
+              <option value="true">Aktif</option>
+              <option value="false">Nonaktif</option>
+            </select>
           </label>
 
           {message && (
@@ -137,8 +148,8 @@ function RewardFormModal({ draft, editing, onChange, onClose, onSave }) {
             >
               Batal
             </button>
-            <button className="reward-form__submit" type="submit">
-              {editing ? 'Simpan Perubahan' : 'Terbitkan Reward Poin'}
+            <button className="reward-form__submit" disabled={saving} type="submit">
+              {saving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Terbitkan Reward Koin'}
             </button>
           </footer>
         </form>

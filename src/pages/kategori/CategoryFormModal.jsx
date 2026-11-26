@@ -10,7 +10,7 @@ function createSlug(value) {
     .replace(/^-|-$/g, '')
 }
 
-function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
+function CategoryFormModal({ draft, editing, onChange, onClose, onSave, saving = false }) {
   const [message, setMessage] = useState('')
 
   function handleChange(event) {
@@ -21,13 +21,11 @@ function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
     setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-
-    if (onSave(event) === false) {
-      setMessage(
-        'Nama atau slug kategori sudah digunakan. Gunakan kategori yang berbeda.',
-      )
+    const ok = await onSave(event)
+    if (ok === false) {
+      setMessage('Gagal menyimpan kategori. Periksa ulang isian Anda.')
     }
   }
 
@@ -69,7 +67,7 @@ function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
             <span>Nama Kategori Produk *</span>
             <input
               autoFocus
-              maxLength={70}
+              maxLength={100}
               name="name"
               onChange={handleChange}
               placeholder="Masukkan nama kategori"
@@ -91,7 +89,7 @@ function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
           <label className="category-form__field">
             <span>Urutan Prioritas Tampil di Mobile *</span>
             <input
-              min="1"
+              min="0"
               name="priority"
               onChange={handleChange}
               required
@@ -103,7 +101,7 @@ function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
           <label className="category-form__field">
             <span>Deskripsi Ringkas Kategori</span>
             <input
-              maxLength={160}
+              maxLength={500}
               name="description"
               onChange={handleChange}
               placeholder="Jelaskan isi kategori secara singkat"
@@ -141,8 +139,12 @@ function CategoryFormModal({ draft, editing, onChange, onClose, onSave }) {
             >
               Batalkan
             </button>
-            <button className="category-form__submit" type="submit">
-              {editing ? 'Simpan Perubahan' : 'Simpan Kategori Baru'}
+            <button className="category-form__submit" disabled={saving} type="submit">
+              {saving
+                ? 'Menyimpan...'
+                : editing
+                  ? 'Simpan Perubahan'
+                  : 'Simpan Kategori Baru'}
             </button>
           </footer>
         </form>

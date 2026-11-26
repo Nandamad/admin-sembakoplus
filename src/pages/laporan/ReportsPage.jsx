@@ -1,74 +1,111 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowDownToLine,
   CalendarDays,
-  FileCheck2,
   TrendingDown,
   TrendingUp,
   Wallet,
 } from 'lucide-react'
 import DataTable from '../../components/DataTable.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
+import api, { extractApiError } from '../../services/api.js'
 import WithdrawModal from './WithdrawModal.jsx'
-import {
-  deadStockProducts,
-  formatRupiah,
-  initialWithdrawals,
-  salesStats,
-  topProducts,
-} from './reportData.js'
+import { formatRupiah, getDefaultDateRange } from './reportData.js'
 import './ReportsPage.css'
 
 function ReportsPage() {
-  const balance = null
-  const withdrawals = initialWithdrawals
+  const defaultRange = getDefaultDateRange()
+  const [from, setFrom] = useState(defaultRange.from)
+  const [to, setTo] = useState(defaultRange.to)
+  const [group, setGroup] = useState('day')
+  const [report, setReport] = useState(null)
+  const [lowStock, setLowStock] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
 
-  const withdrawalColumns = [
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      api.get('/admin/reports', { params: { from, to, group } }),
+      api.get('/admin/inventory', { params: { per_page: 25 } }),
+      api.get('/admin/audit-logs').catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([reportRes, invRes, auditRes]) => {
+        if (!active) return
+        setReport(reportRes.data?.data ?? null)
+        const variants = invRes.data?.data ?? []
+        setLowStock(variants.filter((variant) => Number(variant.stock) <= 25))
+        setAuditLogs(auditRes.data?.data ?? [])
+        setError('')
+      })
+      .catch((err) => {
+        if (active) setError(extractApiError(err, 'Laporan gagal dimuat dari server.'))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [from, to, group])
+
+  const summary = report?.sales?.summary ?? null
+  const topProducts = report?.top_products?.top_products ?? []
+  const voucherUsage = report?.promo_coin_usage?.voucher_usage ?? []
+  const coinStats = report?.promo_coin_usage?.coin_stats ?? null
+
+  const salesStats = [
     {
-      key: 'id',
-      label: 'ID Penarikan',
-      render: (withdrawal) => (
-        <strong className="reports__withdrawal-id">{withdrawal.id}</strong>
-      ),
+      label: 'Total Penjualan (Selesai)',
+      value: summary?.total_sales,
+      tag: `${summary?.total_orders ?? 0} Order`,
+      detail: `Ongkos kirim: ${formatRupiah(summary?.total_shipping ?? 0)}`,
+      tone: 'green',
     },
-    { key: 'date', label: 'Tanggal & Waktu' },
-    { key: 'account', label: 'Rekening Tujuan' },
     {
-      key: 'amount',
-      label: 'Nominal Penarikan',
-      render: (withdrawal) => (
-        <strong className="reports__withdrawal-amount">
-          {formatRupiah(withdrawal.amount)}
-        </strong>
-      ),
+      label: 'Rata-Rata Nilai Pesanan',
+      value: summary?.average_order_value,
+      tag: 'AOV',
+      detail: `Periode ${from} s/d ${to}`,
+      tone: 'blue',
     },
     {
-      key: 'status',
-      label: 'Status Transfer',
-      render: (withdrawal) => (
-        <StatusBadge
-          tone={withdrawal.status === 'Berhasil Masuk' ? 'green' : 'neutral'}
-        >
-          {withdrawal.status}
-        </StatusBadge>
-      ),
+      label: 'Total Subsidi Voucher',
+      value: summary?.total_voucher_discount,
+      tag: `${voucherUsage.length} Kode`,
+      detail: 'Potongan voucher terpakai',
+      tone: 'green',
     },
     {
-      key: 'evidence',
-      label: 'Bukti Transfer',
-      render: (withdrawal) => (
-        <span
-          className={`reports__evidence${
-            withdrawal.status === 'Berhasil Masuk'
-              ? ''
-              : ' reports__evidence--pending'
-          }`}
-        >
-          <FileCheck2 aria-hidden="true" size={13} />
-          {withdrawal.evidence}
+      label: 'Total Potongan Koin',
+      value: summary?.total_coin_discount,
+      tag: `${coinStats?.coins_redeemed_discount ?? 0} Koin`,
+      detail: `Koin beredar: ${coinStats?.net_coins_circulation ?? 0}`,
+      tone: 'red',
+    },
+  ]
+
+  const auditColumns = [
+    {
+      key: 'created_at',
+      label: 'Waktu',
+      render: (log) => (
+        <span className="reports__withdrawal-id">
+          {log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '—'}
         </span>
       ),
+    },
+    {
+      key: 'user',
+      label: 'Aktor',
+      render: (log) => log.user?.name || `User #${log.user_id ?? '-'}`,
+    },
+    { key: 'module', label: 'Modul' },
+    { key: 'action', label: 'Aksi' },
+    {
+      key: 'record_id',
+      label: 'ID Record',
+      render: (log) => (log.record_id ? `#${log.record_id}` : '—'),
     },
   ]
 
@@ -76,22 +113,39 @@ function ReportsPage() {
     <div className="reports">
       <header className="reports__page-header">
         <div>
-          <h1>Laporan Keuangan &amp; Tracking Penjualan</h1>
+          <h1>Laporan Keuangan, Penjualan &amp; Audit</h1>
           <p>
-            Pantau arus kas, laba bersih, estimasi rugi komoditas, produk terlaris
-            &amp; dead stock.
+            Pantau omzet pesanan selesai, produk terlaris, pemakaian promo/koin, dan audit log admin.
           </p>
         </div>
         <div className="reports__header-actions">
+          <input
+            aria-label="Tanggal mulai"
+            onChange={(event) => setFrom(event.target.value)}
+            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d5ddd0', fontSize: 11 }}
+            type="date"
+            value={from}
+          />
+          <input
+            aria-label="Tanggal akhir"
+            onChange={(event) => setTo(event.target.value)}
+            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d5ddd0', fontSize: 11 }}
+            type="date"
+            value={to}
+          />
+          <select
+            aria-label="Pengelompokan periode"
+            onChange={(event) => setGroup(event.target.value)}
+            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d5ddd0', fontSize: 11 }}
+            value={group}
+          >
+            <option value="day">Harian</option>
+            <option value="week">Mingguan</option>
+            <option value="month">Bulanan</option>
+          </select>
           <span className="reports__date">
             <CalendarDays aria-hidden="true" size={13} />
-            Hari Ini •{' '}
-            {new Intl.DateTimeFormat('id-ID', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              timeZone: 'Asia/Jakarta',
-            }).format(new Date())}
+            WIB
           </span>
           <button
             className="reports__withdraw"
@@ -99,17 +153,18 @@ function ReportsPage() {
             type="button"
           >
             <ArrowDownToLine aria-hidden="true" size={14} />
-            Tarik Saldo (Withdraw)
+            Info Settlement
           </button>
         </div>
       </header>
 
-      <p className="reports__sample-notice" role="note">
-        Data laporan, saldo, dan riwayat penarikan akan tersedia setelah backend
-        terhubung.
-      </p>
+      {error && (
+        <p className="reports__sample-notice" role="alert">
+          {error}
+        </p>
+      )}
 
-      <section className="reports__stats" aria-label="Ringkasan keuangan hari ini">
+      <section className="reports__stats" aria-label="Ringkasan keuangan">
         {salesStats.map((stat, index) => {
           const Icon =
             index === 3 ? TrendingDown : index === 2 ? TrendingUp : Wallet
@@ -139,65 +194,69 @@ function ReportsPage() {
           <header className="reports__panel-header">
             <div>
               <h2>Produk Terlaris (Fast-Moving)</h2>
-              <p>Produk dengan penjualan tertinggi pada periode ini</p>
+              <p>Produk dengan penjualan tertinggi pada periode terpilih</p>
             </div>
             <StatusBadge tone={topProducts.length ? 'green' : 'neutral'}>
-              {topProducts.length ? `${topProducts.length} Produk` : 'Belum tersedia'}
+              {topProducts.length ? `${topProducts.length} Produk` : 'Kosong'}
             </StatusBadge>
           </header>
-          {topProducts.length ? (
+          {loading ? (
+            <p className="reports__empty">Memuat laporan produk...</p>
+          ) : topProducts.length ? (
             <ol className="reports__product-list">
               {topProducts.map((product, index) => (
-                <li className="reports__product-row" key={product.id}>
+                <li className="reports__product-row" key={`${product.product_id}-${index}`}>
                   <span className="reports__rank">{index + 1}.</span>
                   <div className="reports__product-copy">
-                    <strong>{product.name}</strong>
+                    <strong>{product.product_name}</strong>
                     <small>
-                      Omset: {formatRupiah(product.revenue)} • {product.note}
+                      Omzet: {formatRupiah(product.total_revenue)} • Satuan:{' '}
+                      {product.quantity_unit}
                     </small>
                   </div>
                   <strong className="reports__product-sold">
-                    {product.sold} Terjual
+                    {product.total_quantity} Terjual
                   </strong>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="reports__empty">Data produk belum tersedia.</p>
+            <p className="reports__empty">Belum ada produk terjual pada rentang tanggal ini.</p>
           )}
         </article>
 
         <article className="reports__panel reports__panel--dead-stock">
           <header className="reports__panel-header">
             <div>
-              <h2>Produk Kurang Laku (Dead Stock Alert)</h2>
-              <p>Stok yang perlu perhatian dan tindakan segera</p>
+              <h2>Stok Varian Terbatas (&lt;= 25 Unit)</h2>
+              <p>Pantauan stok gudang dari modul inventori backend</p>
             </div>
-            <StatusBadge tone="neutral">
-              {deadStockProducts.length ? 'Perlu Tindakan' : 'Belum tersedia'}
+            <StatusBadge tone={lowStock.length ? 'orange' : 'green'}>
+              {lowStock.length ? `${lowStock.length} Varian` : 'Aman'}
             </StatusBadge>
           </header>
-          {deadStockProducts.length ? (
+          {loading ? (
+            <p className="reports__empty">Memuat inventori stok...</p>
+          ) : lowStock.length ? (
             <ol className="reports__product-list">
-              {deadStockProducts.map((product, index) => (
-                <li className="reports__product-row" key={product.id}>
+              {lowStock.slice(0, 8).map((variant, index) => (
+                <li className="reports__product-row" key={variant.id}>
                   <span className="reports__rank">{index + 1}.</span>
                   <div className="reports__product-copy">
-                    <strong>{product.name}</strong>
+                    <strong>{variant.product?.name || variant.name}</strong>
                     <small>
-                      Stok Gudang: {product.stock} pcs • {product.days} Hari
-                      Terakhir
+                      Varian: {variant.name} • SKU: {variant.sku || '—'}
                     </small>
                   </div>
                   <span className="reports__dead-stock-summary">
-                    <strong>{product.sold} Terjual</strong>
-                    <small>{product.suggestion}</small>
+                    <strong>{variant.stock} Tersedia</strong>
+                    <small>{formatRupiah(variant.price)}</small>
                   </span>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="reports__empty">Data stok belum tersedia.</p>
+            <p className="reports__empty">Seluruh stok varian mencukupi.</p>
           )}
         </article>
       </section>
@@ -205,26 +264,24 @@ function ReportsPage() {
       <section className="reports__withdrawals">
         <header className="reports__withdrawals-header">
           <div>
-            <h2>
-              Arus Kas Masuk &amp; Riwayat Penarikan Dana (Withdrawal Log)
-            </h2>
-            <p>Informasi arus kas dan rekening akan dimuat dari backend.</p>
+            <h2>Audit Log Aktivitas Admin ({auditLogs.length})</h2>
+            <p>Rekaman perubahan konfigurasi, voucher, koin, dan pengiriman terbaru.</p>
           </div>
         </header>
-        {withdrawals.length ? (
+        {auditLogs.length ? (
           <DataTable
-            columns={withdrawalColumns}
-            label="Arus kas dan riwayat penarikan dana"
-            rows={withdrawals}
+            columns={auditColumns}
+            label="Audit log aktivitas admin"
+            rows={auditLogs}
           />
         ) : (
-          <p className="reports__empty">Belum ada riwayat penarikan.</p>
+          <p className="reports__empty">Belum ada entri audit log.</p>
         )}
       </section>
 
       {showWithdrawModal && (
         <WithdrawModal
-          balance={balance}
+          balance={summary?.total_sales ?? 0}
           onClose={() => setShowWithdrawModal(false)}
         />
       )}

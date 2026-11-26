@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import './CourierSlotFormModal.css'
 
-function getMinutes(value) {
-  const [hours, minutes] = value.split(':').map(Number)
-  if (hours > 23 || minutes > 59) return null
-  return hours * 60 + minutes
+function tomorrowDate() {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 function CourierSlotFormModal({
@@ -14,39 +14,37 @@ function CourierSlotFormModal({
   onChange,
   onClose,
   onSave,
+  saving = false,
 }) {
   const [message, setMessage] = useState('')
 
   function handleChange(event) {
-    const { name, value } = event.target
-    onChange({ ...draft, [name]: value })
+    const { checked, name, type, value } = event.target
+    onChange({ ...draft, [name]: type === 'checkbox' ? checked : value })
     setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    const times = draft.timeRange.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g) || []
-    if (times.length < 2) {
-      setMessage('Gunakan format jam mulai dan selesai: HH:MM - HH:MM WIB.')
+    if (!draft.delivery_date) {
+      setMessage('Tanggal pengiriman wajib diisi.')
       return
     }
-
-    if (getMinutes(times[1]) <= getMinutes(times[0])) {
+    if (!draft.start_time || !draft.end_time || draft.end_time <= draft.start_time) {
       setMessage('Jam selesai harus setelah jam mulai dalam satu hari.')
       return
     }
-
-    if (Number(draft.capacity) < Number(draft.booked || 0)) {
+    if (Number(draft.quota) < Number(draft.reserved_count || 0)) {
       setMessage('Kuota tidak boleh lebih kecil dari pesanan yang sudah terisi.')
       return
     }
 
-    if (onSave(event) === false) {
-      setMessage('Nama sesi sudah digunakan. Gunakan nama sesi yang berbeda.')
+    const result = await onSave(event)
+    if (typeof result === 'string') {
+      setMessage(result)
       return
     }
-
     setMessage('')
   }
 
@@ -66,17 +64,14 @@ function CourierSlotFormModal({
         <header className="courier-slot-modal__header">
           <div>
             <h2 id="courier-slot-modal-title">
-              {editing
-                ? `Edit Slot Pengiriman: ${draft.name}`
-                : 'Tambah Slot Jam Pengiriman Kurir Baru'}
+              {editing ? 'Edit Slot Jadwal Pengiriman' : 'Tambah Slot Jadwal Baru'}
             </h2>
             <p>
-              Atur batasan jam antar, waktu pemesanan (cut-off), dan alokasi
-              kuota
+              Jadwal pengiriman menggunakan tanggal spesifik setelah hari ini.
             </p>
           </div>
           <button
-            aria-label="Tutup form slot jam kurir"
+            aria-label="Tutup form jadwal"
             className="courier-slot-modal__close"
             onClick={onClose}
             type="button"
@@ -87,66 +82,73 @@ function CourierSlotFormModal({
 
         <form className="courier-slot-modal__form" onSubmit={handleSubmit}>
           <label className="courier-slot-modal__field">
-            <span>Nama Sesi Pengiriman *</span>
+            <span>Tanggal Pengiriman *</span>
             <input
               autoFocus
-              maxLength={100}
-              name="name"
+              min={tomorrowDate()}
+              name="delivery_date"
               onChange={handleChange}
-              placeholder="Masukkan nama sesi"
               required
-              value={draft.name}
+              type="date"
+              value={draft.delivery_date}
             />
           </label>
 
           <label className="courier-slot-modal__field">
-            <span>Rentang Jam Pengantaran (WIB) *</span>
+            <span>Jam Mulai (WIB) *</span>
             <input
-              maxLength={40}
-              name="timeRange"
+              name="start_time"
               onChange={handleChange}
-              placeholder="HH:MM - HH:MM WIB"
               required
-              value={draft.timeRange}
+              type="time"
+              value={draft.start_time}
             />
           </label>
 
           <label className="courier-slot-modal__field">
-            <span>Batas Maksimal Order / Cut-Off (WIB) *</span>
+            <span>Jam Selesai (WIB) *</span>
             <input
-              maxLength={40}
-              name="cutoff"
+              name="end_time"
               onChange={handleChange}
-              placeholder="Masukkan batas waktu cut-off"
               required
-              value={draft.cutoff}
+              type="time"
+              value={draft.end_time}
             />
           </label>
 
           <label className="courier-slot-modal__field">
-            <span>Batas Kuota Pesanan (Slot) *</span>
+            <span>Kuota Maksimal Pesanan *</span>
             <input
               min="1"
-              name="capacity"
+              name="quota"
               onChange={handleChange}
-              placeholder="Masukkan jumlah slot"
               required
               type="number"
-              value={draft.capacity}
+              value={draft.quota}
             />
           </label>
 
           <label className="courier-slot-modal__field">
-            <span>Jumlah Armada Kurir Siaga *</span>
+            <span>Catatan Operasional (Opsional)</span>
             <input
-              min="1"
-              name="couriers"
+              maxLength={500}
+              name="notes"
               onChange={handleChange}
-              placeholder="Masukkan jumlah kurir"
-              required
-              type="number"
-              value={draft.couriers}
+              placeholder="Contoh: Gelombang pagi armada prioritas"
+              value={draft.notes || ''}
             />
+          </label>
+
+          <label className="courier-slot-modal__field">
+            <span>Status Jadwal</span>
+            <select
+              name="is_active"
+              onChange={(event) => onChange({ ...draft, is_active: event.target.value === 'true' })}
+              value={String(Boolean(draft.is_active))}
+            >
+              <option value="true">Aktif</option>
+              <option value="false">Nonaktif</option>
+            </select>
           </label>
 
           {message && (
@@ -163,8 +165,8 @@ function CourierSlotFormModal({
             >
               Batal
             </button>
-            <button className="courier-slot-modal__submit" type="submit">
-              Simpan Slot Jam Kurir
+            <button className="courier-slot-modal__submit" disabled={saving} type="submit">
+              {saving ? 'Menyimpan...' : 'Simpan Jadwal Pengiriman'}
             </button>
           </footer>
         </form>

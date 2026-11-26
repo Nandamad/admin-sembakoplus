@@ -5,10 +5,10 @@ import './PromoForm.css'
 const discountTypes = [
   { value: 'fixed', label: 'Nominal Tetap (Potongan Langsung Rp)' },
   { value: 'percentage', label: 'Persentase Diskon (%)' },
-  { value: 'free_shipping', label: 'Gratis Ongkir' },
+  { value: 'free_shipping', label: 'Gratis Ongkir / Subsidi Ongkir' },
 ]
 
-function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
+function PromoForm({ voucher, editing, onChange, onClose, onSave, saving = false }) {
   const [message, setMessage] = useState('')
 
   function handleChange(event) {
@@ -26,15 +26,16 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
     setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    if (new Date(voucher.endsAt) <= new Date(voucher.startsAt)) {
+    if (voucher.startsAt && voucher.endsAt && new Date(voucher.endsAt) <= new Date(voucher.startsAt)) {
       setMessage('Tanggal selesai harus setelah tanggal mulai.')
       return
     }
 
-    if (onSave(event) === false) {
-      setMessage('Kode voucher sudah digunakan. Gunakan kode yang berbeda.')
+    const ok = await onSave(event)
+    if (ok === false) {
+      setMessage('Gagal menyimpan voucher. Periksa kode atau nilai potongan.')
       return
     }
 
@@ -45,8 +46,8 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
     voucher.type === 'percentage'
       ? 'Nilai Potongan (%) *'
       : voucher.type === 'free_shipping'
-        ? 'Batas Potongan Ongkir (Rp) *'
-      : 'Nilai Potongan (Rp) *'
+        ? 'Subsidi Ongkir (Rp) *'
+        : 'Nilai Potongan (Rp) *'
 
   return (
     <div
@@ -65,12 +66,11 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
           <div>
             <h2 id="promo-form-title">
               {editing
-                ? `Edit Kupon Voucher: ${voucher.code}`
+                ? `Edit Kupon Voucher: ${voucher.code || voucher.name}`
                 : 'Buat Kupon Voucher Baru'}
             </h2>
             <p>
-              Terbitkan voucher diskon atau gratis ongkir yang dapat diklaim
-              pelanggan.
+              Terbitkan voucher diskon atau gratis ongkir yang dikelola server SembakoPlus.
             </p>
           </div>
           <button
@@ -85,13 +85,13 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
 
         <form className="promo-form__body" onSubmit={handleSubmit}>
           <label className="promo-form__field promo-form__field--wide">
-            <span>Kode Voucher Publik Besar *</span>
+            <span>Kode Voucher *</span>
             <input
               autoFocus
-              maxLength={24}
+              maxLength={40}
               name="code"
               onChange={handleChange}
-              placeholder="Masukkan kode voucher"
+              placeholder="Contoh: HEMAT10K"
               required
               value={voucher.code}
             />
@@ -102,7 +102,7 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
             <input
               name="name"
               onChange={handleChange}
-              placeholder="Masukkan nama voucher"
+              placeholder="Masukkan nama promosi voucher"
               required
               value={voucher.name}
             />
@@ -137,6 +137,18 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
             </label>
 
             <label className="promo-form__field">
+              <span>Maksimum Potongan (Rp)</span>
+              <input
+                min="0"
+                name="discountMax"
+                onChange={handleChange}
+                placeholder="Opsional (untuk tipe %)"
+                type="number"
+                value={voucher.discountMax ?? ''}
+              />
+            </label>
+
+            <label className="promo-form__field">
               <span>Minimal Belanja (Rp) *</span>
               <input
                 min="0"
@@ -149,34 +161,44 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
             </label>
 
             <label className="promo-form__field">
-              <span>Kuota Klaim Pengguna *</span>
+              <span>Kuota Global</span>
               <input
                 min="1"
                 name="quota"
                 onChange={handleChange}
-                required
+                placeholder="Kosong = tak terbatas"
                 type="number"
-                value={voucher.quota}
+                value={voucher.quota ?? ''}
               />
             </label>
 
             <label className="promo-form__field">
-              <span>Tanggal Mulai Berlaku *</span>
+              <span>Batas per Pelanggan</span>
+              <input
+                min="1"
+                name="perCustomerLimit"
+                onChange={handleChange}
+                placeholder="Contoh: 1"
+                type="number"
+                value={voucher.perCustomerLimit ?? ''}
+              />
+            </label>
+
+            <label className="promo-form__field">
+              <span>Tanggal Mulai Berlaku</span>
               <input
                 name="startsAt"
                 onChange={handleChange}
-                required
                 type="datetime-local"
                 value={voucher.startsAt}
               />
             </label>
 
             <label className="promo-form__field">
-              <span>Tanggal Selesai *</span>
+              <span>Tanggal Selesai</span>
               <input
                 name="endsAt"
                 onChange={handleChange}
-                required
                 type="datetime-local"
                 value={voucher.endsAt}
               />
@@ -184,9 +206,20 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
           </div>
 
           <label className="promo-form__publish">
-            <span>Langsung Publikasikan &amp; Tampilkan di Halaman Promo Mobile</span>
+            <span>Dapat Digabung dengan Koin Loyalitas</span>
             <input
-              checked={voucher.isActive}
+              checked={Boolean(voucher.canCombineCoin)}
+              name="canCombineCoin"
+              onChange={handleChange}
+              role="switch"
+              type="checkbox"
+            />
+          </label>
+
+          <label className="promo-form__publish">
+            <span>Aktif &amp; Berlaku di Aplikasi Mobile</span>
+            <input
+              checked={Boolean(voucher.isActive)}
               name="isActive"
               onChange={handleChange}
               role="switch"
@@ -208,8 +241,8 @@ function PromoForm({ voucher, editing, onChange, onClose, onSave }) {
             >
               Batal
             </button>
-            <button className="promo-form__submit" type="submit">
-              {editing ? 'Simpan Perubahan' : 'Terbitkan Voucher'}
+            <button className="promo-form__submit" disabled={saving} type="submit">
+              {saving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Terbitkan Voucher'}
             </button>
           </footer>
         </form>
