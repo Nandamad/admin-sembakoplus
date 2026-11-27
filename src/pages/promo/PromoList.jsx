@@ -83,7 +83,7 @@ function PromoList() {
   async function reloadVouchers() {
     const [voucherRes, usageRes] = await Promise.all([
       api.get('/admin/vouchers'),
-      api.get('/admin/voucher-usages').catch(() => ({ data: { data: [] } })),
+      api.get('/admin/voucher-usages'),
     ])
     setVouchers((voucherRes.data?.data ?? []).map(mapApiVoucher))
     setUsages(usageRes.data?.data ?? [])
@@ -94,7 +94,7 @@ function PromoList() {
     Promise.all([
       api.get('/admin/vouchers'),
       api.get('/admin/users', { params: { role: 'customer' } }),
-      api.get('/admin/voucher-usages').catch(() => ({ data: { data: [] } })),
+      api.get('/admin/voucher-usages'),
     ])
       .then(([voucherRes, userRes, usageRes]) => {
         if (!active) return

@@ -42,7 +42,7 @@ function CourierSchedule() {
     const [schedRes, courierRes, settingsRes] = await Promise.all([
       api.get('/admin/delivery-schedules'),
       api.get('/admin/couriers'),
-      api.get('/admin/settings').catch(() => ({ data: { data: {} } })),
+      api.get('/admin/settings'),
     ])
     setSlots(schedRes.data?.data ?? [])
     setCouriers(courierRes.data?.data ?? [])
@@ -56,7 +56,7 @@ function CourierSchedule() {
     Promise.all([
       api.get('/admin/delivery-schedules'),
       api.get('/admin/couriers'),
-      api.get('/admin/settings').catch(() => ({ data: { data: {} } })),
+      api.get('/admin/settings'),
     ])
       .then(([schedRes, courierRes, settingsRes]) => {
         if (!active) return

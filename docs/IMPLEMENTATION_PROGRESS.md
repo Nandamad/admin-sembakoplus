@@ -1,8 +1,8 @@
 # IMPLEMENTATION PROGRESS — ADMIN SEMBAKOPLUS
 
-Dokumen ini mencatat hasil analisis repository Admin Dashboard (`d:\tempat magang\sembakopelus\admin-sembakoplus`) terhadap spesifikasi `d:\tempat magang\sembakopelus\sembakoplus\Rancangan_Lengkap_Sistem_SembakoPlus_v2.md` (MD v2.4 Bagian 9 & Bagian 10) serta status penyambungan ke backend Laravel `sembakoplus`.
+Dokumen ini mencatat hasil analisis repository Admin Dashboard (`D:\projek magang\admin-sembakoplus`) terhadap spesifikasi sistem dan status penyambungan ke backend Laravel (`C:\laragon\www\sembakoplus`).
 
-Terakhir diperbarui: **26 November 2026**.
+Terakhir diperbarui: **27 November 2026**. Seluruh status pengujian historis harus dibedakan dari verifikasi terbaru pada sesi ini.
 
 ---
 
@@ -56,7 +56,57 @@ Terakhir diperbarui: **26 November 2026**.
 
 ---
 
-## 4. Batasan & Prasyarat Lingkungan
+## 4. Verifikasi Terbaru (27 November 2026)
+
+- `npm install`: berhasil; 213 package dipasang, audit melaporkan 0 vulnerabilities.
+- `npm run lint`: berhasil.
+- `npm run build`: berhasil; 2889 modules ditransformasi.
+- `git diff --check`: berhasil.
+- Admin Vite di-bind ke IPv4 `127.0.0.1:5174`; `/` dan `/login` merespons HTTP 200.
+- API client memakai default `http://127.0.0.1:8000/api/v1` (dapat ditimpa oleh `VITE_API_BASE_URL`).
+- Backend route discovery menemukan 108 route di `/api/v1/admin`; route login/profile juga terdaftar.
+- Login admin dan operasi CRUD belum diuji pada sesi ini karena tidak memakai/menebak kredensial akun. Tes backend PHPUnit saat ini terblokir oleh driver SQLite PHP CLI yang tidak tersedia.
+
+## 5. Batasan & Prasyarat Lingkungan
+
+- `WithdrawModal.jsx` hanya informasional; backend tidak menyediakan endpoint settlement/withdraw.
+- Go-live memerlukan `VITE_API_BASE_URL` HTTPS, konfigurasi Midtrans, dan konfigurasi routing provider.
+
+## 6. Handoff Gap — Jangan Keluar dari Rancangan v2.4
+
+Dokumen sumber dan gap lintas repository: `C:\\laragon\\www\\sembakoplus\\docs\\IMPLEMENTATION_PROGRESS.md`, bagian **HANDOFF GAP AKTUAL**. Baca bagian itu sebelum menambah endpoint atau UI.
+
+### Belum lengkap / belum terintegrasi
+
+- Google Login/Register: backend `/auth/google` tersedia; GIS frontend belum mengirim ID token.
+- Refund/pembatalan admin setelah pembayaran: belum ada kebijakan final, endpoint, ledger, atau UI. Tunggu keputusan pemilik sebelum implementasi.
+- Settlement/withdrawal: modal saat ini informasional saja; jangan membuat transaksi dummy.
+- Manajemen customer umum dan manajemen role/permission admin: belum tersedia sebagai halaman lengkap.
+- Upload bukti pengantaran manual admin: route backend ada, UI upload belum lengkap.
+- Broadcast/push notification, FCM device lifecycle, dan rekonsiliasi COD: belum lengkap.
+- Payment QRIS dan email: API/kode ada, tetapi sandbox Midtrans, webhook publik, SMTP/queue belum terbukti end-to-end.
+- OSRM production + geocoding/peta Leaflet: belum siap; local Haversine bukan konfigurasi production.
+- Customer alamat: city options masih statis, belum Leaflet marker/geocoding seperti rancangan.
+- Backup/restore, HTTPS deployment, scheduler/queue supervision, health checks, dan monitoring belum dibuktikan.
+
+### Urutan penerus
+
+1. Verifikasi baseline backend/API dan baca rancangan v2.4.
+2. Selesaikan integrasi Google OAuth customer.
+3. Selesaikan SMTP/reset-password end-to-end.
+4. Siapkan OSRM/geocoding/HTTPS; implementasikan peta alamat mengikuti rancangan.
+5. Uji Midtrans sandbox dan webhook idempotent.
+6. Minta keputusan tertulis untuk refund, retensi data, settlement internal.
+7. Lanjutkan customer management, RBAC, push, COD reconciliation, lalu browser E2E.
+
+### Batas desain wajib
+
+- Harga, stok, total, ongkir, voucher, koin, order/payment status tetap bersumber dari backend.
+- Peta memakai Leaflet + OpenStreetMap + provider geocoding terpilih + OSRM self-hosted; jangan mengganti dengan Google Maps API berbayar.
+- Tidak ada GPS courier real-time; customer melihat timeline status.
+- Foto bukti pengantaran hanya untuk admin berwenang.
+- Jangan membuat refund/settlement/PPN/master wilayah tanpa keputusan dan kontrak rancangan.
+- Lint/build bukan bukti browser E2E atau transaksi production.
 
 - **Pencairan Dana (`WithdrawModal.jsx`)**: MD v2.4 tidak menyediakan endpoint settlement/withdraw dana di API backend (settlement dilakukan lewat dashboard payment gateway Midtrans / rekening bank operasional). Modal menampilkan catatan batas cakupan tersebut secara eksplisit tanpa simulasi transaksi palsu.
 - **Layanan Eksternal Produksi**: Sebelum go-live, pastikan konfigurasi backend produksi mengisi `ROUTING_PROVIDER=osrm` + `OSRM_BASE_URL`, kunci `MIDTRANS_*`, dan `VITE_API_BASE_URL` di build frontend admin mengarah ke host API HTTPS produksi.

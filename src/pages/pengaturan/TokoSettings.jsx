@@ -29,14 +29,14 @@ function TokoSettings() {
   const [store, setStore] = useState({
     store_name: '',
     store_address: '',
-    latitude: -7.726254,
-    longitude: 109.015495,
+    latitude: '',
+    longitude: '',
     timezone: 'Asia/Jakarta',
   })
   const [shippingSetting, setShippingSetting] = useState({
-    is_enabled: true,
-    maximum_delivery_distance_meters: 12000,
-    routing_provider: 'haversine',
+    is_enabled: false,
+    maximum_delivery_distance_meters: '',
+    routing_provider: '',
   })
   const [support, setSupport] = useState({
     whatsapp_number: '',

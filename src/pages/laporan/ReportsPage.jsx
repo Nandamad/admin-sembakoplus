@@ -30,7 +30,7 @@ function ReportsPage() {
     Promise.all([
       api.get('/admin/reports', { params: { from, to, group } }),
       api.get('/admin/inventory', { params: { per_page: 25 } }),
-      api.get('/admin/audit-logs').catch(() => ({ data: { data: [] } })),
+      api.get('/admin/audit-logs'),
     ])
       .then(([reportRes, invRes, auditRes]) => {
         if (!active) return
